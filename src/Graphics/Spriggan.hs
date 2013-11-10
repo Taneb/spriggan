@@ -5,7 +5,7 @@ import Codec.Picture
 import Control.Applicative
 import Control.Monad.IO.Class
 import Control.Monad.Trans.State.Strict
-import Data.Sequence (Seq)
+import Data.Sequence (Seq, (|>))
 import qualified Data.Sequence as Seq
 import Data.Vault.Strict
 
@@ -39,4 +39,7 @@ addSprite = Spriggan $ do
   k <- liftIO newKey
   modify $ insert k defSpriteInternal
   return $ Sprite k
-  
+
+addCostume :: Sprite -> Costume -> Spriggan ()
+addCostume (Sprite k) c = 
+  Spriggan $ modify $ adjust (\s -> s {costumes = costumes s |> c}) k
