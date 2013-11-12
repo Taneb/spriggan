@@ -1,45 +1,71 @@
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Graphics.Spriggan (Spriggan, Sprite, Costume(..)) where
 
 import Codec.Picture
-import Control.Applicative
-import Control.Monad.IO.Class
-import Control.Monad.Trans.State.Strict
+import Control.Monad.Free
+import Control.Monad.Free.Church
+import Data.Monoid
 import Data.Sequence (Seq, (|>))
 import qualified Data.Sequence as Seq
-import Data.Vault.Strict
+import Data.Text (Text)
+import Data.Time.Clock
+import qualified Data.Vault.ST.Strict as V
+import Linear
 
-newtype Spriggan a = Spriggan {getSpriggan :: StateT Vault IO a}
-  deriving (Functor, Applicative, Monad, MonadIO)
+newtype Spriggan s = Spriggan {getSpriggan :: V.Vault s}
+  deriving (Monoid)
 
 data Costume = Costume {
   costumeImage :: DynamicImage,
-  costumeCentre :: (Int, Int)
+  costumeCentre :: V2 Int
   }
 
-data SpriteInternal = SpriteInternal {
-  costumes :: Seq Costume,
-  position :: (Int, Int),
-  rotation :: Double,
-  visible :: Bool
+data SpriteInternal s = SpriteInternal {
+  costumes :: (Costume, Seq Costume),
+  position :: V2 Int,
+  transform :: M22 Double,
+  visible :: Bool,
+  actions :: [(Event, Action s ())]
   }
 
-defSpriteInternal :: SpriteInternal
-defSpriteInternal = SpriteInternal {
-  costumes = Seq.empty,
-  position = (0,0),
-  rotation = 0,
-  visible = False
+defSpriteInternal :: Costume -> SpriteInternal s
+defSpriteInternal c = SpriteInternal {
+  costumes = (c, Seq.empty),
+  position = V2 0 0,
+  transform = V2 (V1 1 0) (V2 0 1),
+  visible = False,
+  actions = []
   }
 
-newtype Sprite = Sprite {getSprite :: Key SpriteInternal}
+newtype Sprite s = Sprite {getSprite :: V.Key s (SpriteInternal s)}
 
-addSprite :: Spriggan Sprite
-addSprite = Spriggan $ do
-  k <- liftIO newKey
-  modify $ insert k defSpriteInternal
-  return $ Sprite k
+data Key = Key
+  deriving (Eq)
 
-addCostume :: Sprite -> Costume -> Spriggan ()
-addCostume (Sprite k) c = 
-  Spriggan $ modify $ adjust (\s -> s {costumes = costumes s |> c}) k
+data Event =
+  KeyDown Key |
+  MouseIsInBox (V2 Int, V2 Int) |
+  Signal Text |
+  Both Event Event |
+  Not Event
+  deriving (Eq)
+
+data ActionF s a =
+  Adjust (Sprite s) (Sprite s -> Sprite s) a | 
+  TimeDelta (NominalDiffTime -> a) |
+  BroadcastSignal Text a
+  deriving (Functor)
+
+type Action s = F (ActionF s)
+
+adjust :: Sprite s -> (Sprite s -> Sprite s) -> Action s ()
+adjust s f = F $ \kp kf -> kf (Adjust s f (kp ()))
+
+timeDelta :: Action s NominalDiffTime
+timeDelta = F $ \kp kf -> kf (TimeDelta kp)
+
+broadcastSignal :: Text -> Action s ()
+broadcastSignal s = F $ \kp kf -> kf (BroadcastSignal s (kp ()))
+
+
