@@ -40,7 +40,7 @@ defSpriteInternal c = SpriteInternal {
 
 newtype Sprite = Sprite {getSprite :: V.Key (SpriteInternal)}
 
-data Key = Key
+data Key = KeyArrowUp | KeyArrowLeft | KeyArrowDown | KeyArrow Right
   deriving (Eq)
 
 data Event =
@@ -58,6 +58,11 @@ data ActionF a =
   deriving (Functor)
 
 type Action = F ActionF
+
+class Backend backend where
+  initialize :: backend -> IO a -> IO a
+  isKeyDown :: Key -> IO Bool
+  mousePos :: IO (V2 Int)
 
 adjust :: Sprite -> (Sprite -> Sprite) -> Action ()
 adjust s f = F $ \kp kf -> kf (Adjust s f (kp ()))
