@@ -37,7 +37,7 @@ defSprite c = Sprite {
   actions = []
   }
 
-newtype SpriteRef = SpriteRef {getSprite :: V.Key (SpriteInternal)}
+newtype SpriteRef = SpriteRef {getSprite :: V.Key Sprite}
 
 data Key = KeyArrowUp | KeyArrowLeft | KeyArrowDown | KeyArrow Right
   deriving (Eq)
