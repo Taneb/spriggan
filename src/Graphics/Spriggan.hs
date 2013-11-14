@@ -59,10 +59,10 @@ data ActionF a =
 type Action = F ActionF
 
 class Backend backend where
-  initialize :: backend -> IO a -> IO a
-  isKeyDown :: Key -> IO Bool
-  mousePos :: IO (V2 Int)
-  render :: [SpriteInternal] -> IO ()
+  run :: backend a -> IO a
+  isKeyDown :: Key -> backend Bool
+  mousePos :: backend (V2 Int)
+  render :: [SpriteInternal] -> backend ()
 
 adjust :: SpriteRef -> (Sprite -> Sprite) -> Action ()
 adjust s f = F $ \kp kf -> kf (Adjust s f (kp ()))
