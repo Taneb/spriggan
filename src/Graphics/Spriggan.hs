@@ -63,6 +63,7 @@ class Backend backend where
   initialize :: backend -> IO a -> IO a
   isKeyDown :: Key -> IO Bool
   mousePos :: IO (V2 Int)
+  render :: [SpriteInternal] -> IO ()
 
 adjust :: Sprite -> (Sprite -> Sprite) -> Action ()
 adjust s f = F $ \kp kf -> kf (Adjust s f (kp ()))
