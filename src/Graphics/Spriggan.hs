@@ -1,12 +1,11 @@
 {-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Graphics.Spriggan (Spriggan, Sprite, Costume(..)) where
 
 import Codec.Picture
 import Control.Monad.Free
 import Control.Monad.Free.Church
 import Data.Monoid
-import Data.Sequence (Seq, (|>))
 import qualified Data.Sequence as Seq
 import Data.Text (Text)
 import Data.Time.Clock
@@ -21,24 +20,24 @@ data Costume = Costume {
   costumeCentre :: V2 Int
   }
 
-data SpriteInternal = SpriteInternal {
-  costumes :: (Costume, Seq Costume),
+data Sprite = Sprite {
+  costume :: Costume,
   position :: V2 Int,
   transform :: M22 Double,
   visible :: Bool,
   actions :: [(Event, Action ())]
   }
 
-defSpriteInternal :: Costume -> SpriteInternal
-defSpriteInternal c = SpriteInternal {
-  costumes = (c, Seq.empty),
+defSprite :: Costume -> Sprite
+defSprite c = Sprite {
+  costumes = c,
   position = V2 0 0,
   transform = V2 (V2 1 0) (V2 0 1),
   visible = False,
   actions = []
   }
 
-newtype Sprite = Sprite {getSprite :: V.Key (SpriteInternal)}
+newtype SpriteRef = SpriteRef {getSprite :: V.Key (SpriteInternal)}
 
 data Key = KeyArrowUp | KeyArrowLeft | KeyArrowDown | KeyArrow Right
   deriving (Eq)
@@ -52,7 +51,7 @@ data Event =
   deriving (Eq)
 
 data ActionF a =
-  Adjust (Sprite) (Sprite -> Sprite) a | 
+  Adjust SpriteRef (Sprite -> Sprite) a | 
   TimeDelta (NominalDiffTime -> a) |
   BroadcastSignal Text a
   deriving (Functor)
@@ -65,7 +64,7 @@ class Backend backend where
   mousePos :: IO (V2 Int)
   render :: [SpriteInternal] -> IO ()
 
-adjust :: Sprite -> (Sprite -> Sprite) -> Action ()
+adjust :: SpriteRef -> (Sprite -> Sprite) -> Action ()
 adjust s f = F $ \kp kf -> kf (Adjust s f (kp ()))
 
 timeDelta :: Action NominalDiffTime
@@ -73,5 +72,4 @@ timeDelta = F $ \kp kf -> kf (TimeDelta kp)
 
 broadcastSignal :: Text -> Action ()
 broadcastSignal s = F $ \kp kf -> kf (BroadcastSignal s (kp ()))
-
 
