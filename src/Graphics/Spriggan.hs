@@ -52,7 +52,7 @@ data Event =
   deriving (Eq)
 
 data ActionF a =
-  Adjust SpriteRef (Sprite -> Sprite) a | 
+  Adjust SpriteRef (Sprite -> Sprite) a
   deriving (Functor)
 
 type Action = F ActionF
