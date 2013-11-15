@@ -28,7 +28,7 @@ data Sprite = Sprite {
   }
 
 defSprite :: Costume -> Sprite
-             defSprite c = Sprite {
+defSprite c = Sprite {
   costumes = c,
   position = 0,
   transform = eye2,
