@@ -1,20 +1,23 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Graphics.Spriggan (Spriggan, Sprite, Costume(..)) where
 
 import Codec.Picture
+import Control.Applicative
 import Control.Monad.Free
 import Control.Monad.Free.Church
+import Control.Monad.State.Lazy
 import Data.Monoid
 import qualified Data.Sequence as Seq
 import Data.List.NonEmpty
 import Data.Text (Text)
 import Data.Time.Clock
-import qualified Data.Vault.Strict as V
+import qualified Data.Vault.Lazy as V
 import Linear
 
-newtype Spriggan = Spriggan {getSpriggan :: V.Vault}
-  deriving (Monoid)
+newtype Spriggan backend a = Spriggan {runSpriggan :: StateT V.Vault backend a}
+  deriving (Functor, Applicative, Monad, MonadState V.Vault)
 
 data Costume = Costume {
   costumeImage :: DynamicImage,
@@ -30,7 +33,7 @@ data Sprite = Sprite {
 
 defSprite :: Costume -> Sprite
 defSprite c = Sprite {
-  costumes = c,
+  costume = c,
   position = 0,
   transform = eye2,
   visible = False
@@ -40,12 +43,12 @@ newtype SpriteRef = SpriteRef {getSprite :: V.Key Sprite}
 
 newtype SpriteCluster = SpriteCluser {getSpriteCluster :: NonEmpty SpriteRef}
 
-data Key = KeyArrowUp | KeyArrowLeft | KeyArrowDown | KeyArrow Right
+data Key = KeyArrowUp | KeyArrowLeft | KeyArrowDown | KeyArrowRight
   deriving (Eq)
 
 data Input =
   KeyDown Key |
-  MouseIsInBox (V2 Int, V2 Int) |
+  MouseIsInBox (V2 Int, V2 Int)
   deriving (Eq)
 
 data ActionF a =
@@ -54,11 +57,11 @@ data ActionF a =
 
 type Action = F ActionF
 
-class Backend backend where
+class (Applicative backend, Monad backend) => Backend backend where
   run :: backend a -> IO a
   isKeyDown :: Key -> backend Bool
   mousePos :: backend (V2 Int)
-  render :: [SpriteInternal] -> backend ()
+  render :: [Sprite] -> backend ()
 
 adjust :: SpriteRef -> (Sprite -> Sprite) -> Action ()
 adjust s f = F $ \kp kf -> kf (Adjust s f (kp ()))
