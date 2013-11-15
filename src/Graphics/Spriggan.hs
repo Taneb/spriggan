@@ -5,19 +5,20 @@ module Graphics.Spriggan (Spriggan, Sprite, Costume(..)) where
 
 import Codec.Picture
 import Control.Applicative
-import Control.Monad.Free
-import Control.Monad.Free.Church
 import Control.Monad.State.Lazy
+import Control.Wire
+import qualified Data.IntMap.Strict as IM
 import Data.Monoid
 import qualified Data.Sequence as Seq
 import Data.List.NonEmpty
 import Data.Text (Text)
 import Data.Time.Clock
-import qualified Data.Vault.Lazy as V
 import Linear
 
-newtype Spriggan backend a = Spriggan {runSpriggan :: StateT V.Vault backend a}
-  deriving (Functor, Applicative, Monad, MonadState V.Vault)
+newtype Spriggan backend a =
+  Spriggan {getSpriggan :: StateT (IM.IntMap Sprite) backend a}
+  deriving (Functor, Applicative, Monad,
+            MonadState (IM.IntMap Sprite), MonadTrans)
 
 data Costume = Costume {
   costumeImage :: DynamicImage,
@@ -28,7 +29,8 @@ data Sprite = Sprite {
   costume :: Costume,
   position :: V2 Int,
   transform :: M22 Double,
-  visible :: Bool
+  visible :: Bool,
+  layer :: Int
   }
 
 defSprite :: Costume -> Sprite
@@ -39,7 +41,7 @@ defSprite c = Sprite {
   visible = False
   }
 
-newtype SpriteRef = SpriteRef {getSprite :: V.Key Sprite}
+newtype SpriteRef = SpriteRef {getSpriteRef :: Int}
 
 newtype SpriteCluster = SpriteCluser {getSpriteCluster :: NonEmpty SpriteRef}
 
@@ -51,19 +53,24 @@ data Input =
   MouseIsInBox (V2 Int, V2 Int)
   deriving (Eq)
 
-data ActionF a =
-  Adjust SpriteCluster (Sprite -> Sprite) a
-  deriving (Functor)
-
-type Action = F ActionF
+data Action =
+  Adjust SpriteCluster (Sprite -> Sprite)
 
 class (Applicative backend, Monad backend) => Backend backend where
-  run :: backend a -> IO a
+  runInBackend :: backend a -> IO a
   isKeyDown :: Key -> backend Bool
   mousePos :: backend (V2 Int)
   render :: [Sprite] -> backend ()
 
-adjust :: SpriteRef -> (Sprite -> Sprite) -> Action ()
-adjust s f = F $ \kp kf -> kf (Adjust s f (kp ()))
-
-
+runSpriggan :: Backend backend =>
+               Spriggan backend () ->
+               Wire (Timed NominalDiffTime ()) () ((->) (Input -> Bool))
+               a (Event [Action]) ->
+               IO ()
+runSpriggan s0 a0 =
+  runInBackend $ evalStateT (getSpriggan $ s0 >> go a0) IM.empty
+  where
+    go a = do
+      undefined
+      
+      
