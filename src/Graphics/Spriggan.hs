@@ -7,10 +7,13 @@ import Codec.Picture
 import Control.Applicative
 import Control.Monad.State.Lazy
 import Control.Wire
+import Control.Wire.Unsafe.Event
+import qualified Data.Foldable as F
 import qualified Data.IntMap.Strict as IM
 import Data.Monoid
 import qualified Data.Sequence as Seq
-import Data.List.NonEmpty
+import qualified Data.Set as S
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.Text (Text)
 import Data.Time.Clock
 import Linear
@@ -18,7 +21,7 @@ import Linear
 newtype Spriggan backend a =
   Spriggan {getSpriggan :: StateT (IM.IntMap Sprite) backend a}
   deriving (Functor, Applicative, Monad,
-            MonadState (IM.IntMap Sprite), MonadTrans)
+            MonadState (IM.IntMap Sprite), MonadTrans, MonadIO)
 
 data Costume = Costume {
   costumeImage :: DynamicImage,
@@ -44,34 +47,47 @@ defSprite c = Sprite {
 
 newtype SpriteRef = SpriteRef {getSpriteRef :: Int}
 
-newtype SpriteCluster = SpriteCluser {getSpriteCluster :: NonEmpty SpriteRef}
+newtype SpriteCluster = SpriteCluster {getSpriteCluster :: NonEmpty SpriteRef}
 
 data Key = KeyArrowUp | KeyArrowLeft | KeyArrowDown | KeyArrowRight
   deriving (Eq)
 
-data Input =
-  KeyDown Key |
-  MouseIsInBox (V2 Int, V2 Int)
+data Input = Input {
+  keysPressed :: S.Set Key,
+  mousePos :: V2 Int
+  }
   deriving (Eq)
 
 data Action =
   Adjust SpriteCluster (Sprite -> Sprite)
 
-class (Applicative backend, Monad backend) => Backend backend where
+class (Applicative backend, MonadIO backend) => Backend backend where
   runInBackend :: backend a -> IO a
-  isKeyDown :: Key -> backend Bool
-  mousePos :: backend (V2 Int)
+  getInput :: backend Input
   render :: [Sprite] -> backend ()
+
+type SprigganWire = Wire (Timed NominalDiffTime ()) () ((->) Input)
+                    () (Event [Action])
 
 runSpriggan :: Backend backend =>
                Spriggan backend () ->
-               Wire (Timed NominalDiffTime ()) () ((->) (Input -> Bool))
-               a (Event [Action]) ->
+               SprigganWire -> 
                IO ()
 runSpriggan s0 a0 =
   runInBackend $ evalStateT (getSpriggan $ s0 >> go a0) IM.empty
   where
-    go a = do
-      undefined
-      
+    go a = go2 a clockSession_
+    go2 a ses0 = do
+      input <- lift getInput
+      (t, ses1) <- stepSession ses0
+      let (r, b) = stepWire a t (Right ()) input
+      case r of
+        Left () -> return ()
+        Right NoEvent -> return ()
+        Right (Event acts) -> do
+          forM_ acts $ \(Adjust (SpriteCluster sprites@(parent :| _)) f) ->
+              F.forM_ sprites $ \sprite -> do
+                undefined
+            
+          go2 b ses1
       
