@@ -43,7 +43,7 @@ newtype SpriteCluster = SpriteCluser {getSpriteCluster :: NonEmpty SpriteRef}
 data Key = KeyArrowUp | KeyArrowLeft | KeyArrowDown | KeyArrow Right
   deriving (Eq)
 
-data Event =
+data Input =
   KeyDown Key |
   MouseIsInBox (V2 Int, V2 Int) |
   deriving (Eq)
