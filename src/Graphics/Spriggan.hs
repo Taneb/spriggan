@@ -7,6 +7,7 @@ import Control.Monad.Free
 import Control.Monad.Free.Church
 import Data.Monoid
 import qualified Data.Sequence as Seq
+import Data.List.NonEmpty
 import Data.Text (Text)
 import Data.Time.Clock
 import qualified Data.Vault.Strict as V
@@ -37,6 +38,8 @@ defSprite c = Sprite {
 
 newtype SpriteRef = SpriteRef {getSprite :: V.Key Sprite}
 
+newtype SpriteCluster = SpriteCluser {getSpriteCluster :: NonEmpty SpriteRef}
+
 data Key = KeyArrowUp | KeyArrowLeft | KeyArrowDown | KeyArrow Right
   deriving (Eq)
 
@@ -50,7 +53,6 @@ data Event =
 
 data ActionF a =
   Adjust SpriteRef (Sprite -> Sprite) a | 
-  BroadcastSignal Text a
   deriving (Functor)
 
 type Action = F ActionF
@@ -64,6 +66,4 @@ class Backend backend where
 adjust :: SpriteRef -> (Sprite -> Sprite) -> Action ()
 adjust s f = F $ \kp kf -> kf (Adjust s f (kp ()))
 
-broadcastSignal :: Text -> Action ()
-broadcastSignal s = F $ \kp kf -> kf (BroadcastSignal s (kp ()))
 
