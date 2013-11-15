@@ -52,7 +52,7 @@ data Input =
   deriving (Eq)
 
 data ActionF a =
-  Adjust SpriteRef (Sprite -> Sprite) a
+  Adjust SpriteCluster (Sprite -> Sprite) a
   deriving (Functor)
 
 type Action = F ActionF
