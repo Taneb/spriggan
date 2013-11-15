@@ -38,7 +38,8 @@ defSprite c = Sprite {
   costume = c,
   position = 0,
   transform = eye2,
-  visible = False
+  visible = False,
+  layer = 0
   }
 
 newtype SpriteRef = SpriteRef {getSpriteRef :: Int}
