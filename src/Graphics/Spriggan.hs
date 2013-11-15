@@ -24,17 +24,15 @@ data Sprite = Sprite {
   costume :: Costume,
   position :: V2 Int,
   transform :: M22 Double,
-  visible :: Bool,
-  actions :: [(Event, Action ())]
+  visible :: Bool
   }
 
 defSprite :: Costume -> Sprite
-defSprite c = Sprite {
+             defSprite c = Sprite {
   costumes = c,
-  position = V2 0 0,
-  transform = V2 (V2 1 0) (V2 0 1),
-  visible = False,
-  actions = []
+  position = 0,
+  transform = eye2,
+  visible = False
   }
 
 newtype SpriteRef = SpriteRef {getSprite :: V.Key Sprite}
@@ -52,7 +50,6 @@ data Event =
 
 data ActionF a =
   Adjust SpriteRef (Sprite -> Sprite) a | 
-  TimeDelta (NominalDiffTime -> a) |
   BroadcastSignal Text a
   deriving (Functor)
 
@@ -66,9 +63,6 @@ class Backend backend where
 
 adjust :: SpriteRef -> (Sprite -> Sprite) -> Action ()
 adjust s f = F $ \kp kf -> kf (Adjust s f (kp ()))
-
-timeDelta :: Action NominalDiffTime
-timeDelta = F $ \kp kf -> kf (TimeDelta kp)
 
 broadcastSignal :: Text -> Action ()
 broadcastSignal s = F $ \kp kf -> kf (BroadcastSignal s (kp ()))
