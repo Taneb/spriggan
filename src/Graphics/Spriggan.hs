@@ -46,9 +46,6 @@ data Key = KeyArrowUp | KeyArrowLeft | KeyArrowDown | KeyArrow Right
 data Event =
   KeyDown Key |
   MouseIsInBox (V2 Int, V2 Int) |
-  Signal Text |
-  Both Event Event |
-  Not Event
   deriving (Eq)
 
 data ActionF a =
